@@ -2,10 +2,9 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-import timm
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
-from transformers import ViTForImageClassification
+from transformers import ViTForImageClassification, ViTModel
 from tqdm import tqdm
 
 # Define the number of classes
@@ -32,31 +31,42 @@ val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
 model_name = 'google/vit-base-patch16-384'
 model = ViTForImageClassification.from_pretrained(model_name, num_labels=NUM_CLASSES, ignore_mismatched_sizes=True)
 
-# Modify the classifier layer to match the number of classes in your dataset
-model.classifier = nn.Linear(model.config.hidden_size, NUM_CLASSES)
-
 # Create a custom LoRA layer
 class LoRALayer(nn.Module):
-    def __init__(self, model, hidden_size, rank, alpha):
+    def __init__(self, hidden_size, rank, alpha):
         super(LoRALayer, self).__init__()
-        self.model = model
         self.rank = rank
         self.alpha = alpha
         self.lora_layer = nn.Linear(hidden_size, hidden_size, bias=False)
         self.lora_layer.weight.data.normal_(0, alpha / rank)
 
     def forward(self, x):
-        out = self.model(x)
-        lora_out = self.lora_layer(out)
-        return out + lora_out
+        return self.lora_layer(x)
 
 # Initialize LoRA and integrate it with the model
 hidden_size = 768  # Hidden size of the ViT model
 rank = 8  # Rank parameter for LoRA
 alpha = 32  # Scaling parameter for LoRA
 
+# Create the LoRA layer
+lora_layer = LoRALayer(hidden_size, rank, alpha)
+
 # Wrap the model with the LoRA layer
-lora_model = LoRALayer(model, hidden_size, rank, alpha)
+class LoRAModel(nn.Module):
+    def __init__(self, model, lora_layer):
+        super(LoRAModel, self).__init__()
+        self.model = model
+        self.lora_layer = lora_layer
+
+    def forward(self, x):
+        outputs = self.model.vit(x)
+        hidden_states = outputs.last_hidden_state  # Extract hidden states
+        lora_out = self.lora_layer(hidden_states)
+        pooled_output = hidden_states[:, 0, :] + lora_out[:, 0, :]  # Add LoRA output to the [CLS] token
+        logits = self.model.classifier(pooled_output)  # Final classification layer
+        return logits
+
+lora_model = LoRAModel(model, lora_layer)
 lora_model.train()
 
 # Define optimizer
