@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
-from transformers import ViTForImageClassification, ViTModel
+from transformers import ViTForImageClassification
 from tqdm import tqdm
 
 # Define the number of classes
@@ -27,9 +27,13 @@ val_dataset = train_dataset
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
 
-# Load pre-trained ViT model 
+# Load pre-trained ViT model
 model_name = 'google/vit-base-patch16-384'
 model = ViTForImageClassification.from_pretrained(model_name, num_labels=NUM_CLASSES, ignore_mismatched_sizes=True)
+
+# Move the model to GPU if available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 # Create a custom LoRA layer
 class LoRALayer(nn.Module):
@@ -49,7 +53,7 @@ rank = 8  # Rank parameter for LoRA
 alpha = 32  # Scaling parameter for LoRA
 
 # Create the LoRA layer
-lora_layer = LoRALayer(hidden_size, rank, alpha)
+lora_layer = LoRALayer(hidden_size, rank, alpha).to(device)
 
 # Wrap the model with the LoRA layer
 class LoRAModel(nn.Module):
@@ -66,7 +70,7 @@ class LoRAModel(nn.Module):
         logits = self.model.classifier(pooled_output)  # Final classification layer
         return logits
 
-lora_model = LoRAModel(model, lora_layer)
+lora_model = LoRAModel(model, lora_layer).to(device)
 lora_model.train()
 
 # Define optimizer
@@ -78,7 +82,6 @@ def get_scheduler(optimizer, warmup_steps, total_steps):
         if current_step < warmup_steps:
             return float(current_step) / float(max(1, warmup_steps))
         return max(0.0, float(total_steps - current_step) / float(max(1, total_steps - warmup_steps)))
-
     return LambdaLR(optimizer, lr_lambda)
 
 # Total training steps (number of epochs * number of batches per epoch)
@@ -97,6 +100,7 @@ for epoch in range(num_epochs):
     running_loss = 0.0
     train_progress = tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs} Training')
     for step, (images, labels) in enumerate(train_progress):
+        images, labels = images.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = lora_model(images)
         loss = criterion(outputs, labels)
@@ -121,6 +125,7 @@ for epoch in range(num_epochs):
     val_progress = tqdm(val_loader, desc=f'Epoch {epoch+1}/{num_epochs} Validation')
     with torch.no_grad():
         for images, labels in val_progress:
+            images, labels = images.to(device), labels.to(device)
             outputs = lora_model(images)
             loss = criterion(outputs, labels)
             val_loss += loss.item()
