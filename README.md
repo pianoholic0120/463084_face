@@ -1,7 +1,7 @@
 # Facial Recognition 
 Summer Intern At ITRI
 
-## Cited 
+## Cited
 ### A Large Scale Fish Dataset
 @inproceedings{ulucan2020large,
   title={A Large-Scale Dataset for Fish Segmentation and Classification},

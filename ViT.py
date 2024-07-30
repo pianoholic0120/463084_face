@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import random_split
 from transformers import ViTForImageClassification
 from tqdm import tqdm
 
@@ -11,29 +12,32 @@ from tqdm import tqdm
 NUM_CLASSES = 9
 
 # Initialize TensorBoard SummaryWriter
-writer = SummaryWriter(log_dir='./runs/Fish-Recognition')
+writer = SummaryWriter(log_dir='./runs/Fish-Recognition-80-20_newlr')
 
 # Define transformations for your dataset
 transform = transforms.Compose([
-    transforms.Resize((384, 384)),  # Resize images to 384*384
+    transforms.Resize((384, 384)),  # Resize images to 384x384
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 # Load your fish dataset
-train_dataset = datasets.ImageFolder(root='./Fish_Dataset/Dataset', transform=transform)
-val_dataset = train_dataset
+full_dataset = datasets.ImageFolder(root='./NA_Fish_Dataset', transform=transform)
 
+# Define the proportion of the dataset to be used for training
+train_size = int(0.8 * len(full_dataset))  # 80% for training
+val_size = len(full_dataset) - train_size  # 20% for validation
+
+# Randomly split the dataset into training and validation sets
+train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+# Create data loaders for the training and validation sets
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
 
 # Load pre-trained ViT model
 model_name = 'google/vit-base-patch16-384'
 model = ViTForImageClassification.from_pretrained(model_name, num_labels=NUM_CLASSES, ignore_mismatched_sizes=True)
-
-# Move the model to GPU if available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
 
 # Create a custom LoRA layer
 class LoRALayer(nn.Module):
@@ -53,7 +57,7 @@ rank = 8  # Rank parameter for LoRA
 alpha = 32  # Scaling parameter for LoRA
 
 # Create the LoRA layer
-lora_layer = LoRALayer(hidden_size, rank, alpha).to(device)
+lora_layer = LoRALayer(hidden_size, rank, alpha)
 
 # Wrap the model with the LoRA layer
 class LoRAModel(nn.Module):
@@ -70,11 +74,16 @@ class LoRAModel(nn.Module):
         logits = self.model.classifier(pooled_output)  # Final classification layer
         return logits
 
-lora_model = LoRAModel(model, lora_layer).to(device)
+lora_model = LoRAModel(model, lora_layer)
+
+# Move the model to GPU and wrap it with DataParallel
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+lora_model = nn.DataParallel(lora_model)
+lora_model.to(device)
 lora_model.train()
 
 # Define optimizer
-optimizer = torch.optim.AdamW(lora_model.parameters(), lr=2e-5)
+optimizer = torch.optim.AdamW(lora_model.parameters(), lr=1e-4)
 
 # Define a warmup function and learning rate scheduler
 def get_scheduler(optimizer, warmup_steps, total_steps):
@@ -85,7 +94,7 @@ def get_scheduler(optimizer, warmup_steps, total_steps):
     return LambdaLR(optimizer, lr_lambda)
 
 # Total training steps (number of epochs * number of batches per epoch)
-num_epochs = 20
+num_epochs = 10
 total_steps = num_epochs * len(train_loader)
 warmup_steps = int(0.1 * total_steps)  # 10% of total steps for warmup
 
