@@ -72,8 +72,8 @@ class LoRALayer(nn.Module):
 
 # Initialize LoRA and integrate it with the model
 hidden_size = 768  # Hidden size of the ViT model
-rank = 4  # Rank parameter for LoRA (8 for NA ; 4 for Full)
-alpha = 64  # Scaling parameter for LoRA (32 for NA ; 64 for Full)
+rank = 8  # Rank parameter for LoRA (8 for NA ; 4 for Full)
+alpha = 32  # Scaling parameter for LoRA (32 for NA ; 64 for Full)
 
 # Create the LoRA layer
 lora_layer = LoRALayer(hidden_size, rank, alpha)

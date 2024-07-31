@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from transformers import ViTForImageClassification
 from tqdm import tqdm
+from collections import OrderedDict
 
 # Define the number of classes
 NUM_CLASSES = 9
@@ -17,7 +18,7 @@ inference_transform = transforms.Compose([
 
 # Load the inference dataset
 inference_dataset = datasets.ImageFolder(root='./Inference_Dataset', transform=inference_transform)
-inference_loader = DataLoader(inference_dataset, batch_size=32, shuffle=False)
+inference_loader = DataLoader(inference_dataset, batch_size=16, shuffle=False)
 
 # Define the LoRA layer
 class LoRALayer(nn.Module):
@@ -52,16 +53,21 @@ base_model = ViTForImageClassification.from_pretrained(model_name, num_labels=NU
 
 # Initialize the LoRA layer
 hidden_size = 768  # Hidden size of the ViT model
-rank = 4  # Rank parameter for LoRA
-alpha = 64  # Scaling parameter for LoRA
+rank = 8  # Rank parameter for LoRA
+alpha = 32  # Scaling parameter for LoRA
 lora_layer = LoRALayer(hidden_size, rank, alpha)
 
 # Wrap the base model with the LoRA layer
 lora_model = LoRAModel(base_model, lora_layer)
 
 # Load trained weights (modify 'model_checkpoint.pth' to your trained model's checkpoint path)
-checkpoint = torch.load('./model_checkpoints/Full')
-lora_model.load_state_dict(checkpoint['model_state_dict'])
+checkpoint = torch.load('./model_checkpoints/NA/checkpoint_epoch_6.pth')
+# Remove the 'module.' prefix from the keys
+new_state_dict = OrderedDict()
+for k, v in checkpoint['model_state_dict'].items():
+    name = k[7:] if k.startswith('module.') else k  # remove 'module.'
+    new_state_dict[name] = v
+lora_model.load_state_dict(new_state_dict)
 
 # Move the model to GPU and set it to evaluation mode
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -84,6 +90,12 @@ with torch.no_grad():
         _, preds = torch.max(outputs, 1)
         all_preds.extend(preds.cpu().numpy())
         all_labels.extend(labels.cpu().numpy())
+
+# Calculate and print accuracy
+correct = sum(p == l for p, l in zip(all_preds, all_labels))
+total = len(all_labels)
+accuracy = correct / total
+print(f'Inference Accuracy: {accuracy * 100:.2f}%')
 
 # Print results
 for idx, (pred, label) in enumerate(zip(all_preds, all_labels)):
