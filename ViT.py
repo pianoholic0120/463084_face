@@ -7,12 +7,31 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import random_split
 from transformers import ViTForImageClassification
 from tqdm import tqdm
+import os
+
+# Define the save path for the model
+save_path = './model_checkpoints/Full'
+os.makedirs(save_path, exist_ok=True)
+
+# Function to save the model
+def save_model(epoch, model, optimizer, scheduler, save_path):
+    state = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'scheduler_state_dict': scheduler.state_dict(),
+        'num_classes': NUM_CLASSES,
+        'transform': transform,  # Save the transform used for training
+    }
+    torch.save(state, os.path.join(save_path, f'checkpoint_epoch_{epoch+1}.pth'))
+    print(f'Model saved at epoch {epoch+1}.')
+
 
 # Define the number of classes
 NUM_CLASSES = 9
 
 # Initialize TensorBoard SummaryWriter
-writer = SummaryWriter(log_dir='./runs/Fish-Recognition-80-20_newlr')
+writer = SummaryWriter(log_dir='./runs/Fish-dataset-Recognition-80-20_newlr')
 
 # Define transformations for your dataset
 transform = transforms.Compose([
@@ -22,7 +41,7 @@ transform = transforms.Compose([
 ])
 
 # Load your fish dataset
-full_dataset = datasets.ImageFolder(root='./NA_Fish_Dataset', transform=transform)
+full_dataset = datasets.ImageFolder(root='./Fish_Dataset/Dataset', transform=transform)
 
 # Define the proportion of the dataset to be used for training
 train_size = int(0.8 * len(full_dataset))  # 80% for training
@@ -32,8 +51,8 @@ val_size = len(full_dataset) - train_size  # 20% for validation
 train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
 # Create data loaders for the training and validation sets
-train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
 # Load pre-trained ViT model
 model_name = 'google/vit-base-patch16-384'
@@ -53,8 +72,8 @@ class LoRALayer(nn.Module):
 
 # Initialize LoRA and integrate it with the model
 hidden_size = 768  # Hidden size of the ViT model
-rank = 8  # Rank parameter for LoRA
-alpha = 32  # Scaling parameter for LoRA
+rank = 4  # Rank parameter for LoRA (8 for NA ; 4 for Full)
+alpha = 64  # Scaling parameter for LoRA (32 for NA ; 64 for Full)
 
 # Create the LoRA layer
 lora_layer = LoRALayer(hidden_size, rank, alpha)
@@ -83,7 +102,7 @@ lora_model.to(device)
 lora_model.train()
 
 # Define optimizer
-optimizer = torch.optim.AdamW(lora_model.parameters(), lr=1e-4)
+optimizer = torch.optim.AdamW(lora_model.parameters(), lr=1e-4,weight_decay=0.01)
 
 # Define a warmup function and learning rate scheduler
 def get_scheduler(optimizer, warmup_steps, total_steps):
@@ -150,6 +169,9 @@ for epoch in range(num_epochs):
     # Log validation metrics to TensorBoard
     writer.add_scalar('Validation Loss', val_loss / len(val_loader), epoch)
     writer.add_scalar('Validation Accuracy', val_accuracy, epoch)
+
+    # Save the model after each epoch
+    save_model(epoch, lora_model, optimizer, scheduler, save_path)
 
 # Close the TensorBoard writer
 writer.close()

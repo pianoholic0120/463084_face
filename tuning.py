@@ -13,7 +13,7 @@ from itertools import product
 NUM_CLASSES = 9
 
 # Initialize TensorBoard SummaryWriter
-writer = SummaryWriter(log_dir='./runs/Fish-Recognition-Hyperparameter-Tuning')
+writer = SummaryWriter(log_dir='./runs/Fish-Recognition-Hyperparameter-Tuning-full')
 
 # Define transformations for your dataset
 transform = transforms.Compose([
@@ -23,7 +23,7 @@ transform = transforms.Compose([
 ])
 
 # Load your fish dataset
-full_dataset = datasets.ImageFolder(root='./NA_Fish_Dataset', transform=transform)
+full_dataset = datasets.ImageFolder(root='./Fish_Dataset/Dataset', transform=transform)
 
 # Define the proportion of the dataset to be used for training
 train_size = int(0.8 * len(full_dataset))  # 80% for training
