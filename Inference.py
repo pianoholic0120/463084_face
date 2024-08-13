@@ -18,7 +18,7 @@ inference_transform = transforms.Compose([
 
 # Load the inference dataset
 inference_dataset = datasets.ImageFolder(root='./Inference_Dataset', transform=inference_transform)
-inference_loader = DataLoader(inference_dataset, batch_size=16, shuffle=False)
+inference_loader = DataLoader(inference_dataset, batch_size=32, shuffle=False)
 
 # Define the LoRA layer
 class LoRALayer(nn.Module):
@@ -61,7 +61,7 @@ lora_layer = LoRALayer(hidden_size, rank, alpha)
 lora_model = LoRAModel(base_model, lora_layer)
 
 # Load trained weights (modify 'model_checkpoint.pth' to your trained model's checkpoint path)
-checkpoint = torch.load('./model_checkpoints/NA/checkpoint_epoch_6.pth')
+checkpoint = torch.load('./model_checkpoints/DiffuseMix_test/checkpoint_epoch_10.pth')
 # Remove the 'module.' prefix from the keys
 new_state_dict = OrderedDict()
 for k, v in checkpoint['model_state_dict'].items():
@@ -98,8 +98,8 @@ accuracy = correct / total
 print(f'Inference Accuracy: {accuracy * 100:.2f}%')
 
 # Print results
-for idx, (pred, label) in enumerate(zip(all_preds, all_labels)):
-    print(f"Image {idx}: Predicted - {class_names[pred]}, Actual - {class_names[label]}")
+# for idx, (pred, label) in enumerate(zip(all_preds, all_labels)):
+    # print(f"Image {idx}: Predicted - {class_names[pred]}, Actual - {class_names[label]}")
 
 # Optional: Save predictions to a file
 with open('inference_results.txt', 'w') as f:

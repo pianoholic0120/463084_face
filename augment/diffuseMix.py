@@ -4,7 +4,6 @@ from PIL import Image
 import random
 from augment.utils import Utils
 
-
 class DiffuseMix(Dataset):
     def __init__(self, original_dataset, num_images, guidance_scale, fractal_imgs, idx_to_class, prompts, model_handler):
         self.original_dataset = original_dataset
@@ -21,7 +20,7 @@ class DiffuseMix(Dataset):
     def generate_augmented_images(self):
         augmented_data = []
 
-        base_directory = './result'
+        base_directory = './result_test3'
         original_resized_dir = os.path.join(base_directory, 'original_resized')
         generated_dir = os.path.join(base_directory, 'generated')
         fractal_dir = os.path.join(base_directory, 'fractal')
@@ -41,6 +40,14 @@ class DiffuseMix(Dataset):
 
             original_img = Image.open(img_path).convert('RGB')
             original_img = original_img.resize((256, 256))
+
+            # Apply rotation
+            # angle = random.choice([45, 135, 225, 315])
+            # original_img = original_img.rotate(angle, expand=True)
+
+            # Resize back to 256x256 after rotation
+            # original_img = original_img.resize((256, 256))
+
             img_filename = os.path.basename(img_path)
 
             label_dirs = {dtype: os.path.join(base_directory, dtype, str(label)) for dtype in
@@ -52,11 +59,16 @@ class DiffuseMix(Dataset):
             original_img.save(os.path.join(label_dirs['original_resized'], img_filename))
 
             for prompt in self.prompts:
-                augmented_images =  self.model_handler.generate_images(prompt, img_path, self.num_augmented_images_per_image,
-                                                          self.guidance_scale)
+                # Generate augmented images
+                augmented_images = self.model_handler.generate_images(prompt, img_path, self.num_augmented_images_per_image, self.guidance_scale)
 
                 for i, img in enumerate(augmented_images):
                     img = img.resize((256, 256))
+                    
+                    # Rotate the generated image with the same angle as the original image
+                    # img = img.rotate(angle, expand=True)
+                    # img = img.resize((256, 256))
+
                     generated_img_filename = f"{img_filename}_generated_{prompt}_{i}.jpg"
                     img.save(os.path.join(label_dirs['generated'], generated_img_filename))
 

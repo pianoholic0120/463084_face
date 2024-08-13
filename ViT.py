@@ -10,7 +10,7 @@ from tqdm import tqdm
 import os
 
 # Define the save path for the model
-save_path = './model_checkpoints/Full'
+save_path = './model_checkpoints/new_dataset'
 os.makedirs(save_path, exist_ok=True)
 
 # Function to save the model
@@ -28,10 +28,10 @@ def save_model(epoch, model, optimizer, scheduler, save_path):
 
 
 # Define the number of classes
-NUM_CLASSES = 9
+NUM_CLASSES = 44 
 
 # Initialize TensorBoard SummaryWriter
-writer = SummaryWriter(log_dir='./runs/Fish-dataset-Recognition-80-20_newlr')
+writer = SummaryWriter(log_dir='./runs/Fish-dataset-Recognition-new-dataset')
 
 # Define transformations for your dataset
 transform = transforms.Compose([
@@ -41,7 +41,7 @@ transform = transforms.Compose([
 ])
 
 # Load your fish dataset
-full_dataset = datasets.ImageFolder(root='./Fish_Dataset/Dataset', transform=transform)
+full_dataset = datasets.ImageFolder(root='./classification_training_images/training_images', transform=transform)
 
 # Define the proportion of the dataset to be used for training
 train_size = int(0.8 * len(full_dataset))  # 80% for training
@@ -113,7 +113,7 @@ def get_scheduler(optimizer, warmup_steps, total_steps):
     return LambdaLR(optimizer, lr_lambda)
 
 # Total training steps (number of epochs * number of batches per epoch)
-num_epochs = 10
+num_epochs = 15
 total_steps = num_epochs * len(train_loader)
 warmup_steps = int(0.1 * total_steps)  # 10% of total steps for warmup
 

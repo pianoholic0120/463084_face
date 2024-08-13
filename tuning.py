@@ -36,6 +36,10 @@ train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
+# Define a dataset for inference (assumes separate folder for inference)
+inference_dataset = datasets.ImageFolder(root='./Inference_Dataset', transform=transform)
+inference_loader = DataLoader(inference_dataset, batch_size=32, shuffle=False)
+
 # Load pre-trained ViT model
 model_name = 'google/vit-base-patch16-384'
 model = ViTForImageClassification.from_pretrained(model_name, num_labels=NUM_CLASSES, ignore_mismatched_sizes=True)
@@ -76,9 +80,9 @@ def get_scheduler(optimizer, warmup_steps, total_steps):
     return LambdaLR(optimizer, lr_lambda)
 
 # Define hyperparameter ranges
-rank_list = [4, 8, 16]
-alpha_list = [32, 64, 128]
-lr_list = [1e-4, 2e-5, 5e-5]
+rank_list = [4, 8]
+alpha_list = [32, 64]
+lr_list = [1e-4, 3e-5, 5e-5, 3e-4, 1e-3, 1e-5, 5e-4]
 
 # Store results
 results = []
@@ -97,10 +101,10 @@ for rank, alpha, lr in product(rank_list, alpha_list, lr_list):
     lora_model.train()
 
     # Define optimizer
-    optimizer = torch.optim.AdamW(lora_model.parameters(), lr=lr)
+    optimizer = torch.optim.AdamW(lora_model.parameters(), lr=lr, weight_decay=0.01)
 
     # Total training steps (number of epochs * number of batches per epoch)
-    num_epochs = 5
+    num_epochs = 20
     total_steps = num_epochs * len(train_loader)
     warmup_steps = int(0.1 * total_steps)  # 10% of total steps for warmup
 
@@ -108,9 +112,6 @@ for rank, alpha, lr in product(rank_list, alpha_list, lr_list):
 
     # Define loss function
     criterion = nn.CrossEntropyLoss()
-
-    # Store best validation accuracy
-    best_val_accuracy = 0.0
 
     # Training loop
     for epoch in range(num_epochs):
@@ -160,17 +161,37 @@ for rank, alpha, lr in product(rank_list, alpha_list, lr_list):
         writer.add_scalar('Validation Loss', val_loss / len(val_loader), epoch)
         writer.add_scalar('Validation Accuracy', val_accuracy, epoch)
 
-        # Update best validation accuracy
-        best_val_accuracy = max(best_val_accuracy, val_accuracy)
+    # Inference loop
+    lora_model.eval()
+    all_preds = []
+    all_labels = []
 
-    # Log hyperparameters and best validation accuracy
+    with torch.no_grad():
+        for images, labels in tqdm(inference_loader, desc='Inference'):
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = lora_model(images)
+            _, preds = torch.max(outputs, 1)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    # Calculate and print inference accuracy
+    correct = sum(p == l for p, l in zip(all_preds, all_labels))
+    total = len(all_labels)
+    inference_accuracy = 100 * correct / total
+    print(f'Inference Accuracy: {inference_accuracy}%')
+
+    # Log inference metrics to TensorBoard
+    writer.add_scalar('Inference Accuracy', inference_accuracy)
+
+    # Update best inference accuracy
     results.append({
         'rank': rank,
         'alpha': alpha,
         'lr': lr,
-        'best_val_accuracy': best_val_accuracy
+        'inference_accuracy': inference_accuracy
     })
-    print(f"Rank: {rank}, Alpha: {alpha}, LR: {lr}, Best Validation Accuracy: {best_val_accuracy}%")
+    print(f"Rank: {rank}, Alpha: {alpha}, LR: {lr}, Inference Accuracy: {inference_accuracy}%")
 
 # Close the TensorBoard writer
 writer.close()
