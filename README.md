@@ -55,4 +55,3 @@ python Inference.py
 #### Fractal Dataset
 > This is the [Fractal Dataset](<https://drive.google.com/drive/folders/1uxK7JaO1NaJxaAGViQa1bZfX6ZzNMzx2>) to download. 
 > This is provided by the original DiffuseMix paper.
-
