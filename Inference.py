@@ -7,6 +7,7 @@ from tqdm import tqdm
 from collections import OrderedDict
 
 # Define the number of classes
+# NUM_CLASSES = 44
 NUM_CLASSES = 9
 
 # Define transformations for the inference dataset
@@ -61,7 +62,7 @@ lora_layer = LoRALayer(hidden_size, rank, alpha)
 lora_model = LoRAModel(base_model, lora_layer)
 
 # Load trained weights (modify 'model_checkpoint.pth' to your trained model's checkpoint path)
-checkpoint = torch.load('./model_checkpoints/DiffuseMix_test/checkpoint_epoch_10.pth')
+checkpoint = torch.load('./model_checkpoints/new_dataset_test17/checkpoint_epoch_10.pth')
 # Remove the 'module.' prefix from the keys
 new_state_dict = OrderedDict()
 for k, v in checkpoint['model_state_dict'].items():
@@ -77,6 +78,12 @@ lora_model.eval()
 # Define the class names (modify according to your dataset)
 class_names = ['Black Sea Sprat', 'Gilt-Head Bream', 'Horse Mackerel', 'Red Mullet', 
                'Red Sea Bream', 'Sea Bass', 'Shrimp', 'Striped Red Mullet', 'Trout']
+# class_names = ['Ancistrus', 'Apistogramma','Astyanax','Bario','Black Sea Sprat','Bryconops','Bujurquina',
+            # 'Bunocephalus','Catla','Characidium','Charax','Copella','Corydoras','Creagrutus','Curimata','Doras','Erythrinus',
+            # 'Gasteropelecus','Gilt Head Bream','Grass Carp','Gymnotus','Hemigrammus','Horse Mackerel','Hyphessobrycon',
+            # 'Knodus',  'Moenkhausia','Otocinclus','Oxyropsis','Phenacogaster','Pimelodella','Prochilodus','Pygocentrus',
+            # 'Pyrrhulina','Red Mullet','Red Sea Bream','Rineloricaria','Sea Bass','Shrimp','Sorubim','Striped Red Mullet','Tatia',
+            # 'Tetragonopterus','Trout','Tyttocharax']
 
 # Inference loop
 all_preds = []
