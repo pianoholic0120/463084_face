@@ -52,6 +52,9 @@ python Inference.py
 > Dikow, Rebecca (2023). Images used to train Amazonian fish classification model. Office of the Chief Information Officer. Dataset. 
 > https://doi.org/10.25573/data.17314730.v1
 
+#### Car Images Dataset
+> [Here](<https://www.kaggle.com/datasets/kshitij192/cars-image-dataset>) is the dataset from kaggle. 
+
 #### Fractal Dataset
 > This is the [Fractal Dataset](<https://drive.google.com/drive/folders/1uxK7JaO1NaJxaAGViQa1bZfX6ZzNMzx2>) to download. 
 > This is provided by the "DiffuseMix : Label-Preserving Data Augmentation with Diffusion Models" paper.
