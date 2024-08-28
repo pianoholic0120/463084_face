@@ -10,10 +10,10 @@ from tqdm import tqdm
 from itertools import product
 
 # Define the number of classes
-NUM_CLASSES = 9
+NUM_CLASSES = 44
 
 # Initialize TensorBoard SummaryWriter
-writer = SummaryWriter(log_dir='./runs/Fish-Recognition-Hyperparameter-Tuning-full')
+writer = SummaryWriter(log_dir='./runs/Fish-Recognition-Hyperparameter-Tuning-new_dataset')
 
 # Define transformations for your dataset
 transform = transforms.Compose([
@@ -23,7 +23,7 @@ transform = transforms.Compose([
 ])
 
 # Load your fish dataset
-full_dataset = datasets.ImageFolder(root='./Fish_Dataset/Dataset', transform=transform)
+full_dataset = datasets.ImageFolder(root='./result_test4/blended', transform=transform)
 
 # Define the proportion of the dataset to be used for training
 train_size = int(0.8 * len(full_dataset))  # 80% for training
@@ -37,7 +37,7 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
 # Define a dataset for inference (assumes separate folder for inference)
-inference_dataset = datasets.ImageFolder(root='./Inference_Dataset', transform=transform)
+inference_dataset = datasets.ImageFolder(root='./classification_training_images/training_images', transform=transform)
 inference_loader = DataLoader(inference_dataset, batch_size=32, shuffle=False)
 
 # Load pre-trained ViT model

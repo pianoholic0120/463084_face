@@ -10,7 +10,7 @@ from tqdm import tqdm
 import os
 
 # Define the save path for the model
-save_path = './model_checkpoints/new_dataset'
+save_path = './model_checkpoints/new_dataset_test11'
 os.makedirs(save_path, exist_ok=True)
 
 # Function to save the model
@@ -28,10 +28,10 @@ def save_model(epoch, model, optimizer, scheduler, save_path):
 
 
 # Define the number of classes
-NUM_CLASSES = 44 
+NUM_CLASSES = 44
 
 # Initialize TensorBoard SummaryWriter
-writer = SummaryWriter(log_dir='./runs/Fish-dataset-Recognition-new-dataset')
+writer = SummaryWriter(log_dir='./runs/Fish-dataset-Recognition-new-dataset_test11')
 
 # Define transformations for your dataset
 transform = transforms.Compose([
@@ -41,7 +41,7 @@ transform = transforms.Compose([
 ])
 
 # Load your fish dataset
-full_dataset = datasets.ImageFolder(root='./classification_training_images/training_images', transform=transform)
+full_dataset = datasets.ImageFolder(root='./result_test11/blended', transform=transform)
 
 # Define the proportion of the dataset to be used for training
 train_size = int(0.8 * len(full_dataset))  # 80% for training
@@ -55,6 +55,7 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 
 # Load pre-trained ViT model
+# model_name = 'google/vit-large-patch16-384'
 model_name = 'google/vit-base-patch16-384'
 model = ViTForImageClassification.from_pretrained(model_name, num_labels=NUM_CLASSES, ignore_mismatched_sizes=True)
 
@@ -72,8 +73,8 @@ class LoRALayer(nn.Module):
 
 # Initialize LoRA and integrate it with the model
 hidden_size = 768  # Hidden size of the ViT model
-rank = 8  # Rank parameter for LoRA (8 for NA ; 4 for Full)
-alpha = 32  # Scaling parameter for LoRA (32 for NA ; 64 for Full)
+rank = 4  # Rank parameter for LoRA (8 for old, 4 for new)
+alpha = 32  # Scaling parameter for LoRA (32 for old and new)
 
 # Create the LoRA layer
 lora_layer = LoRALayer(hidden_size, rank, alpha)
@@ -102,7 +103,7 @@ lora_model.to(device)
 lora_model.train()
 
 # Define optimizer
-optimizer = torch.optim.AdamW(lora_model.parameters(), lr=1e-4,weight_decay=0.01)
+optimizer = torch.optim.AdamW(lora_model.parameters(), lr=3e-4,weight_decay=0.01) #(1e-4 for old, 3e-4 for new)
 
 # Define a warmup function and learning rate scheduler
 def get_scheduler(optimizer, warmup_steps, total_steps):
